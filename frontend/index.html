@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Certificate NFT Upload</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/web3/1.6.1/web3.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin-top: 50px;
+        }
+        input, button {
+            margin: 10px;
+        }
+        #certificateHash {
+            margin-top: 20px;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>Upload Certificate and Mint NFT</h2>
+    
+    <!-- File input for certificate upload -->
+    <input type="file" id="certificateFile" />
+    <br />
+
+    <!-- Input to enter student wallet address -->
+    <input type="text" id="studentAddress" placeholder="Enter Student Wallet Address" />
+    <br />
+
+    <!-- Button to upload certificate and mint NFT -->
+    <button id="uploadButton">Upload Certificate as NFT</button>
+    <br />
+
+    <!-- Display the generated hash -->
+    <div id="certificateHash"></div>
+
+    <h3>Verify Certificate Hash</h3>
+    
+    <!-- Input field to verify the certificate hash -->
+    <input type="text" id="verifyHashInput" placeholder="Enter certificate hash to verify" />
+    <button id="verifyHashButton">Verify Hash</button>
+
+    <script>
+        // Initialize Web3 provider (MetaMask)
+        const web3 = new Web3(window.ethereum);
+
+        // Request access to MetaMask
+        if (window.ethereum) {
+            window.ethereum.enable(); // Prompt user to allow MetaMask connection
+        } else {
+            alert("MetaMask is not installed.");
+        }
+
+        // Contract ABI and address
+        const contractABI = [
+            // Place your ABI array here from Truffle
+        ];
+        const contractAddress = "your address"; // Deployed contract address
+
+        // Create contract instance
+        const certificateNFT = new web3.eth.Contract(contractABI, contractAddress);
+
+        // Handle Upload Certificate Button
+        document.getElementById("uploadButton").addEventListener("click", async () => {
+            const certificateFile = document.getElementById("certificateFile").files[0];
+            const studentAddress = document.getElementById("studentAddress").value;
+
+            if (!certificateFile || !studentAddress) {
+                alert("Please choose a certificate file and enter a student wallet address.");
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onloadend = async () => {
+                const certificateData = reader.result;
+                const certificateHash = web3.utils.sha3(certificateData); // Hash the certificate
+
+                // Display the hash value on the page
+                document.getElementById("certificateHash").innerText = "Certificate Hash: " + certificateHash;
+
+                try {
+                    // Get the accounts from MetaMask
+                    const accounts = await web3.eth.getAccounts();
+                    const fromAddress = accounts[0]; // Get the current wallet address (MetaMask)
+                    
+                    // Upload certificate to contract (mint NFT)
+                    const receipt = await certificateNFT.methods.mintCertificate(studentAddress, certificateHash).send({ from: fromAddress });
+
+                    // Log transaction details for debugging
+                    console.log("Transaction receipt:", receipt);
+
+                    // Check for confirmation of transaction success
+                    if (receipt.status) {
+                        alert("Certificate uploaded and NFT minted successfully!");
+                    } else {
+                        alert("Certificate upload failed.");
+                    }
+                } catch (error) {
+                    console.error("Error uploading certificate:", error);
+                    alert("Error uploading certificate.");
+                }
+            };
+            reader.readAsArrayBuffer(certificateFile);
+        });
+
+        // Handle Verify Hash Button
+        document.getElementById("verifyHashButton").addEventListener("click", async () => {
+            const certificateHash = document.getElementById("verifyHashInput").value;
+            
+            if (!certificateHash) {
+                alert("Please enter the certificate hash to verify.");
+                return;
+            }
+
+            try {
+                // Call verifyCertificate method on the contract
+                const verified = await certificateNFT.methods.verifyCertificate(certificateHash).call();
+                
+                if (verified) {
+                    alert("Certificate hash verified successfully!");
+                } else {
+                    alert("Certificate hash verification failed.");
+                }
+            } catch (error) {
+                console.error("Error verifying certificate:", error);
+                alert("Error verifying certificate.");
+            }
+        });
+    </script>
+</body>
+</html>
